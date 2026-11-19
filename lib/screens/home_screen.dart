@@ -45,7 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Hatırlatıcı silinsin mi?'),
-        content: Text('"\${entry.reminder.title}" kalıcı olarak silinecek.'),
+        content: Text('"' + entry.reminder.title + '" kalıcı olarak silinecek.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
