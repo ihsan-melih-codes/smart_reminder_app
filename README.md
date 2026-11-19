@@ -143,3 +143,20 @@ Hive adapter kodunu yeniden üretmek gerekirse:
 ```bash
 flutter pub run build_runner build
 ```
+
+
+## Android Yayın Derlemesi
+
+Android yayın paketi oluşturmadan önce uygulamayı kendi upload anahtarınızla imzalayın. Anahtar dosyasını güvenli bir yerde üretin ve yedekleyin:
+
+```bash
+keytool -genkey -v -keystore android/app/upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+```
+
+`android/key.properties.example` dosyasını `android/key.properties` adıyla kopyalayın ve kendi parolalarınızla doldurun. Anahtar dosyası ve `key.properties` Git tarafından yok sayılır; bu dosyaları depoya eklemeyin. Gradle, yerel imza bilgileri bulunduğunda release derlemesini bu anahtarla imzalar.
+
+```bash
+flutter build appbundle --release
+```
+
+Upload anahtarını ve parolalarını güvenli biçimde yedekleyin. Anahtarı kaybetmek sonraki mağaza güncellemelerini engelleyebilir.
