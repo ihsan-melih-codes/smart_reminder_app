@@ -3,6 +3,8 @@ class NotificationService {
 
   static Future<void> init() async {}
 
+  static Future<bool> requestPermissions() async => false;
+
   static Future<void> scheduleNotification({
     required int id,
     required String title,
