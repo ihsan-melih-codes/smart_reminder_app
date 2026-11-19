@@ -84,19 +84,25 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
 
       final box = Hive.box<Reminder>('remindersBox');
       final key = await box.add(reminder);
-
-      await NotificationService.scheduleNotification(
-        id: key,
-        title: 'Hatırlatıcı: ${reminder.title}',
-        body: reminder.description,
-        scheduledDate: reminder.dateTime,
-      );
-
-      if (!mounted) return;
-
-      final message = NotificationService.isSupported
+      var message = NotificationService.isSupported
           ? 'Hatırlatıcı kaydedildi ve bildirim kuruldu.'
           : 'Hatırlatıcı kaydedildi. Web sürümünde yerel bildirim desteklenmez.';
+
+      if (NotificationService.isSupported) {
+        try {
+          await NotificationService.scheduleNotification(
+            id: key,
+            title: 'Hatırlatıcı: ${reminder.title}',
+            body: reminder.description,
+            scheduledDate: reminder.dateTime,
+          );
+        } catch (_) {
+          message =
+              'Hatırlatıcı kaydedildi ancak bildirim kurulamadı. Bildirim izinlerini kontrol edin.';
+        }
+      }
+
+      if (!mounted) return;
       Navigator.pop(context, message);
     } catch (_) {
       if (!mounted) return;
