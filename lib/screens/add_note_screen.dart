@@ -18,6 +18,7 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
   final descController = TextEditingController();
   DateTime selectedDate = DateTime.now().add(const Duration(minutes: 5));
   String selectedPriority = 'Orta';
+  bool _isSaving = false;
 
   @override
   void dispose() {
@@ -27,11 +28,12 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
   }
 
   Future<void> _pickDateTime() async {
+    final now = DateTime.now();
     final pickedDate = await showDatePicker(
       context: context,
-      initialDate: selectedDate,
-      firstDate: DateTime.now(),
-      lastDate: DateTime(2035),
+      initialDate: selectedDate.isBefore(now) ? now : selectedDate,
+      firstDate: DateTime(now.year, now.month, now.day),
+      lastDate: DateTime(2100),
     );
     if (pickedDate == null || !mounted) return;
 
@@ -39,45 +41,75 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
       context: context,
       initialTime: TimeOfDay.fromDateTime(selectedDate),
     );
-    if (pickedTime == null) return;
+    if (pickedTime == null || !mounted) return;
 
-    setState(() {
-      selectedDate = DateTime(
-        pickedDate.year,
-        pickedDate.month,
-        pickedDate.day,
-        pickedTime.hour,
-        pickedTime.minute,
-      );
-    });
+    final newDateTime = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+    setState(() => selectedDate = newDateTime);
+
+    if (newDateTime.isBefore(DateTime.now())) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: Text('Lütfen gelecekte bir saat seçin.')),
+        );
+    }
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_isSaving || !_formKey.currentState!.validate()) return;
 
-    final reminder = Reminder(
-      title: titleController.text.trim(),
-      description: descController.text.trim(),
-      dateTime: selectedDate,
-      priority: selectedPriority,
-    );
+    if (!selectedDate.isAfter(DateTime.now())) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: Text('Hatırlatma zamanı gelecekte olmalı.')),
+        );
+      return;
+    }
 
-    final box = Hive.box<Reminder>('remindersBox');
-    final key = await box.add(reminder);
+    setState(() => _isSaving = true);
+    try {
+      final reminder = Reminder(
+        title: titleController.text.trim(),
+        description: descController.text.trim(),
+        dateTime: selectedDate,
+        priority: selectedPriority,
+      );
 
-    await NotificationService.scheduleNotification(
-      id: key,
-      title: 'Hatırlatıcı: ${reminder.title}',
-      body: reminder.description,
-      scheduledDate: reminder.dateTime,
-    );
+      final box = Hive.box<Reminder>('remindersBox');
+      final key = await box.add(reminder);
 
-    if (!mounted) return;
+      await NotificationService.scheduleNotification(
+        id: key,
+        title: 'Hatırlatıcı: ${reminder.title}',
+        body: reminder.description,
+        scheduledDate: reminder.dateTime,
+      );
 
-    final message = NotificationService.isSupported
-        ? 'Hatırlatıcı kaydedildi ve bildirim kuruldu.'
-        : 'Hatırlatıcı kaydedildi. Web sürümünde yerel bildirim desteklenmez.';
-    Navigator.pop(context, message);
+      if (!mounted) return;
+
+      final message = NotificationService.isSupported
+          ? 'Hatırlatıcı kaydedildi ve bildirim kuruldu.'
+          : 'Hatırlatıcı kaydedildi. Web sürümünde yerel bildirim desteklenmez.';
+      Navigator.pop(context, message);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Hatırlatıcı kaydedilemedi. Lütfen tekrar deneyin.'),
+          ),
+        );
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   String _formatDate(DateTime dateTime) {
@@ -104,6 +136,7 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
               CustomDesignContainer(
                 child: TextFormField(
                   controller: titleController,
+                  maxLength: 80,
                   textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(
                     labelText: 'Başlık',
@@ -121,6 +154,7 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
               CustomDesignContainer(
                 child: TextFormField(
                   controller: descController,
+                  maxLength: 500,
                   maxLines: 3,
                   decoration: const InputDecoration(
                     labelText: 'Açıklama',
@@ -172,9 +206,15 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
               ),
               const SizedBox(height: 20),
               FilledButton.icon(
-                onPressed: _save,
-                icon: const Icon(Icons.save_outlined),
-                label: const Text('Kaydet ve bildirimi kur'),
+                onPressed: _isSaving ? null : _save,
+                icon: _isSaving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.save_outlined),
+                label: Text(_isSaving ? 'Kaydediliyor…' : 'Kaydet ve bildirimi kur'),
                 style: FilledButton.styleFrom(
                   minimumSize: const Size(double.infinity, 54),
                 ),
