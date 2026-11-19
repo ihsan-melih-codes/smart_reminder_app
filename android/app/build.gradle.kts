@@ -1,8 +1,24 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+val releaseSigningPropertiesFile = rootProject.file("key.properties")
+val releaseSigningProperties = Properties()
+if (releaseSigningPropertiesFile.exists()) {
+    releaseSigningPropertiesFile.inputStream().use { releaseSigningProperties.load(it) }
+}
+
+val releaseStoreFile = releaseSigningProperties.getProperty("storeFile")
+val releaseSigningConfigured =
+    !releaseSigningProperties.getProperty("keyAlias").isNullOrBlank() &&
+        !releaseSigningProperties.getProperty("keyPassword").isNullOrBlank() &&
+        !releaseSigningProperties.getProperty("storePassword").isNullOrBlank() &&
+        !releaseStoreFile.isNullOrBlank() &&
+        file(releaseStoreFile).isFile
 
 android {
     namespace = "com.ihsanmelih.smartreminder.smart_reminder_app"
@@ -27,9 +43,22 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (releaseSigningConfigured) {
+            create("release") {
+                keyAlias = releaseSigningProperties.getProperty("keyAlias")
+                keyPassword = releaseSigningProperties.getProperty("keyPassword")
+                storeFile = file(releaseStoreFile!!)
+                storePassword = releaseSigningProperties.getProperty("storePassword")
+            }
+        }
+    }
+
     buildTypes {
         getByName("release") {
-            signingConfig = signingConfigs.getByName("debug")
+            if (releaseSigningConfigured) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 }
