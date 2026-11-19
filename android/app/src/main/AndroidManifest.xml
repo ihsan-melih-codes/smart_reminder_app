@@ -31,10 +31,14 @@
             </intent-filter>
         </activity>
 
-        <!-- Flutter Local Notifications Boot Receiver -->
+        <!-- Receives scheduled notifications and restores them after reboot. -->
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"
+            android:exported="false" />
+
         <receiver
             android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
-            android:exported="true">
+            android:exported="false">
 
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
