@@ -40,6 +40,37 @@ class _HomeScreenState extends State<HomeScreen> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<void> _confirmDelete(Box<Reminder> box, _ReminderEntry entry) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Hatırlatıcı silinsin mi?'),
+        content: Text('"\${entry.reminder.title}" kalıcı olarak silinecek.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+    await box.delete(entry.key);
+    await NotificationService.cancelNotification(entry.key);
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(content: Text('Hatırlatıcı silindi.')),
+      );
+  }
+
   List<_ReminderEntry> _visibleItems(Box<Reminder> box) {
     final entries = box.keys.map((key) {
       return _ReminderEntry(key as int, box.get(key)!);
@@ -174,12 +205,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         tooltip: 'Sil',
                         icon: const Icon(Icons.delete_outline),
                         color: Colors.red.shade700,
-                        onPressed: () async {
-                          await box.delete(entry.key);
-                          await NotificationService.cancelNotification(
-                            entry.key,
-                          );
-                        },
+                        onPressed: () => _confirmDelete(box, entry),
                       ),
                     ),
                   );
