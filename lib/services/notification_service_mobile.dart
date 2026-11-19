@@ -19,6 +19,21 @@ class NotificationService {
     await _notifications.initialize(settings);
   }
 
+  static Future<bool> requestPermissions() async {
+    final androidNotifications = _notifications
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+    if (androidNotifications == null) return false;
+
+    final notificationsGranted =
+        await androidNotifications.requestNotificationsPermission();
+    if (notificationsGranted != true) return false;
+
+    final exactAlarmsGranted =
+        await androidNotifications.requestExactAlarmsPermission();
+    return exactAlarmsGranted == true;
+  }
+
   static Future<void> scheduleNotification({
     required int id,
     required String title,

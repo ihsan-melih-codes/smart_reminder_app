@@ -82,13 +82,25 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
         priority: selectedPriority,
       );
 
+      var permissionsGranted = false;
+      if (NotificationService.isSupported) {
+        try {
+          permissionsGranted = await NotificationService.requestPermissions();
+        } catch (_) {
+          permissionsGranted = false;
+        }
+      }
+
+      if (!mounted) return;
       final box = Hive.box<Reminder>('remindersBox');
       final key = await box.add(reminder);
-      var message = NotificationService.isSupported
-          ? 'Hatırlatıcı kaydedildi ve bildirim kuruldu.'
-          : 'Hatırlatıcı kaydedildi. Web sürümünde yerel bildirim desteklenmez.';
+      var message = !NotificationService.isSupported
+          ? 'Hatırlatıcı kaydedildi. Web sürümünde yerel bildirim desteklenmez.'
+          : permissionsGranted
+              ? 'Hatırlatıcı kaydedildi ve bildirim kuruldu.'
+              : 'Hatırlatıcı kaydedildi ancak bildirim izinleri verilmedi. Bildirim göndermek için izinleri açın.';
 
-      if (NotificationService.isSupported) {
+      if (NotificationService.isSupported && permissionsGranted) {
         try {
           await NotificationService.scheduleNotification(
             id: key,
